@@ -15,6 +15,7 @@ group :test do
   gem 'rspec'
   gem 'webrat'
   gem 'spork'
+  gem 'ruby-debug19', :require => 'ruby-debug'
 end
 
 # Use unicorn as the web server

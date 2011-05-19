@@ -43,4 +43,5 @@ Spork.prefork do
 end
 
 Spork.each_run do
+  load File.expand_path("../../config/routes.rb", __FILE__)
 end
