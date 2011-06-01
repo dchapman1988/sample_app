@@ -66,6 +66,14 @@ describe UsersController do
       get :new
       response.should have_selector("input[name='user[password_confirmation]'][type='password']")
     end
+
+    it "should now allow signed-in users" do
+      user = Factory(:user)
+      test_sign_in(user)
+      get :new
+      flash[:error].should =~ /You're already logged in/i
+      response.should redirect_to(root_path)
+    end
   end # "GET 'new'"
 
   describe "POST 'create'" do
@@ -91,6 +99,14 @@ describe UsersController do
       it "should render the 'new' page" do
         post :create, :user => @attr
         response.should render_template('new')
+      end
+
+      it "should not allow signed-in users" do
+        user = Factory(:user)
+        test_sign_in(user)
+        post :create, :user => @attr
+        flash[:error].should =~ /You're already logged in/i
+        response.should redirect_to(root_path)
       end
     end # "failure"
 
@@ -286,7 +302,25 @@ describe UsersController do
         response.should have_selector("a", :href => "/users?page=2",
                                            :content => "Next")
       end
-    end
+
+      it "should have delete links for admins" do
+        admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(admin)
+        get :index
+        @users.each do |user|
+          response.should have_selector("a", :content => "delete")
+        end
+      end
+
+      it "should not have delete links for normal users" do
+        normal_user = Factory(:user, :email => "normal@user.com", :admin => false)
+        test_sign_in(normal_user)
+        get :index
+        @users.each do |user|
+          response.should_not have_selector("a", :content => "delete")
+        end
+      end
+    end # "GET 'index'"
   end
 
   describe "DELETE 'destroy'" do
@@ -323,10 +357,17 @@ describe UsersController do
         end.should change(User, :count).by(-1)
       end
 
+      it "should not destroy itself" do
+        lambda do
+          delete :destroy, :id => admin
+        end.should_not change(User, :count)
+        response.should redirect_to(users_path)
+      end
+
       it "should redirect to the users page" do
         delete :destroy, :id => @user
         response.should redirect_to(users_path)
       end
-    end
-  end
+    end # "as an admin user"
+  end # "DELETE 'destroy'"
 end

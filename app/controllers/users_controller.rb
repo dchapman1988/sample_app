@@ -1,7 +1,9 @@
 class UsersController < ApplicationController
-  before_filter :authenticate, :only => [:index, :edit, :update, :destroy]
-  before_filter :correct_user, :only => [:edit, :update]
-  before_filter :admin_user,   :only => :destroy
+  before_filter :authenticate,         :only => [:index, :edit, :update, :destroy]
+  before_filter :correct_user,         :only => [:edit, :update]
+  before_filter :admin_user,           :only => :destroy
+  before_filter :signed_in_user,       :only => [:new, :create]
+  #before_filter :avoid_destroy_myself, :only => :destroy
 
   def index
     @title = "All users"
@@ -14,8 +16,13 @@ class UsersController < ApplicationController
   end
 
   def new
-    @user = User.new
-    @title = "Sign up"
+    unless signed_in?
+      @user = User.new
+      @title = "Sign up"
+    else
+      flash[:info] = "You're already logged in, so you cannot create a new account."
+      redirect_to root_path
+    end
   end
   
   def create
@@ -48,9 +55,22 @@ class UsersController < ApplicationController
   end
 
   def destroy
-    User.find(params[:id]).destroy
-    flash[:success] = "User destroyed."
-    redirect_to users_path
+    @user = User.find(params[:id])
+    if current_user.admin? && current_user?(@user)
+      flash[:error] = "You cannot delete yourself!"
+      redirect_to users_path
+    else
+      User.find(params[:id]).destroy
+      flash[:success] = "User destroyed."
+      redirect_to users_path 
+    end
+  end
+
+  def signed_in_user
+    if signed_in?
+      flash[:error] = "You're already logged in..."
+      redirect_to root_path
+    end
   end
 
   private
@@ -67,4 +87,9 @@ class UsersController < ApplicationController
     def admin_user
       redirect_to(root_path) unless current_user.admin?
     end
+
+    #def avoid_destroy_myself
+    #  @user = User.find(params[:id])
+    #  redirect_to users_path, :notice => "You cannot destroy yourself!"
+    #end
 end
